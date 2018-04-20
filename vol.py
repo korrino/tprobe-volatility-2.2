@@ -43,7 +43,7 @@ try:
     import gdb #pylint: disable-msg=W0611,F0401
     import tprobe
 
-    sys.argv = ["vol.py", "--profile=%s" % tprobe.profile, "heisenberg"]
+    sys.argv = ["vol.py", "--profile=%s" % tprobe.profile, "tprobe"]
 
 except ImportError:
     pass

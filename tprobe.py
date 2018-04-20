@@ -18,9 +18,9 @@
 #profile = 'Win7SP0x64'
 #profile = 'Win7SP0x86'
 #profile = 'Win7SP1x64'
-#profile = 'Win7SP1x86'
+profile = 'Win7SP1x86'
 #profile = 'WinXPSP1x64'
-profile = 'WinXPSP2x64'
+#profile = 'WinXPSP2x64'
 #profile = 'WinXPSP2x86'
 #profile = 'WinXPSP3x86'
 

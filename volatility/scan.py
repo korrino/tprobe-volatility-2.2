@@ -179,7 +179,7 @@ class BaseScanner(object):
                 # Figure out how much data to read
                 l = min(constants.SCAN_BLOCKSIZE + self.overlap, range_end - current_offset)
 
-                # heisenberg version, scanning moved to qemu
+                # tprobe version, scanning moved to qemu
 
                 # we want only one check, is it always self.constraints[0]?
                 leadingCheck = self.constraints[0]
