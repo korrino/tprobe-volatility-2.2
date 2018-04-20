@@ -19,8 +19,8 @@
 """
 @author:       Maciej Szawlowski and Tomasz Salacinski
 @license:      GNU General Public License 2.0 or later
-@contact:      sza.maciej@gmail.com
-@organization: Honeynet Project
+@contact:      contact@korrino.com  
+@organization: Korrino
 """
 
 import sys
