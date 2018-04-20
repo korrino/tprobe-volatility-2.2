@@ -70,5 +70,5 @@ class InteractiveShell(tprobe.AbstractTProbePlugin):
                 import readline
             except ImportError:
                 pass
-        console.interact("Welcome in tprobe shell plugin.")
+        console.interact("Welcome in TProbe shell plugin.")
 
