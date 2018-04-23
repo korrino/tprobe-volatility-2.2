@@ -50,29 +50,29 @@ class ViewRegisters3(tprobe.AbstractTProbePlugin):
         eflags = self.functions.gr.calculate("eflags")
         regs = {}
 
-        regs["c"] = eflags & 0x1
+        regs["CF"] = eflags & 0x1
         eflags >>= 1
         #reserved
         eflags >>= 1
-        regs["p"] = eflags & 0x1
+        regs["PF"] = eflags & 0x1
         eflags >>= 1
         #reserved
         eflags >>= 1
-        regs["a"] = eflags & 0x1
+        regs["AF"] = eflags & 0x1
         eflags >>= 1
         #reserved
         eflags >>= 1
-        regs["z"] = eflags & 0x1
+        regs["ZF"] = eflags & 0x1
         eflags >>= 1
-        regs["s"] = eflags & 0x1
+        regs["SF"] = eflags & 0x1
         eflags >>= 1
-        regs["t"] = eflags & 0x1
+        regs["TF"] = eflags & 0x1
         eflags >>= 1
-        regs["i"] = eflags & 0x1
+        regs["IF"] = eflags & 0x1
         eflags >>= 1
-        regs["d"] = eflags & 0x1
+        regs["DF"] = eflags & 0x1
         eflags >>= 1
-        regs["o"] = eflags & 0x1
+        regs["OF"] = eflags & 0x1
         eflags >>= 1
         return regs
 

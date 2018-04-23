@@ -5,7 +5,9 @@ import curses, struct, fcntl, termios
 import sys
 
 class GdbConsole(code.InteractiveConsole): 
+
     def runsource(self, source, filename="<input>", symbol="single"):
+        self.stdout = sys.stdout
         if(source == ""): return False
         try:
             cmds = source.split()
@@ -34,7 +36,9 @@ class GdbConsole(code.InteractiveConsole):
 
         # Case 3
         self.runcode(code)
+        sys.stdout = self.stdout
         return False
+
 
 class InteractiveShell(tprobe.AbstractTProbePlugin):
     after_validation_priority = 100

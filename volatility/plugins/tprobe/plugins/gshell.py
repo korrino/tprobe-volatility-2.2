@@ -141,9 +141,9 @@ class MemoryView(object):
             self.data = self.gshell.core.addrspace.read(self.offset, 0x100)
 
         self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+
         self.width = 0
         self.height = 0
-#        self.vbox = gtk.VBox(False, 0)
 
         self.menu = gtk.Menu()
         menu_item1 = gtk.MenuItem("Sync with eax")
@@ -283,6 +283,7 @@ class MemoryDwordView(MemoryView):
         self.gshell = gshell
         self.sync_reg = "esp"
         self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+
         self.width = 0
         self.height = 0
 #        self.vbox = gtk.VBox(False, 0)
@@ -486,7 +487,7 @@ class RegistersView(object):
 
         regs = self.functions.regs3.calculate()
 
-        for reg in ["c", "p", "a", "z", "s", "t", "i", "d", "o"]:
+        for reg in ["CF", "PF", "AF", "ZF", "SF", "TF", "IF", "DF", "OF"]:
             line = [reg, "%01x" % regs[reg]]
             self.liststore.append(line)
         return self.liststore
@@ -755,10 +756,49 @@ class ProcessView(object):
             return True
         return False
 
+class AboutView(object):
+    def __init__(self, gshell):
+        self.gshell = gshell
+
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.width = 0
+        self.height = 0
+
+        label = gtk.Label("Test")
+
+        vbox = gtk.VBox(False, 0)
+        vbox.pack_start(label, False, True, 0)
+
+        self.window.add(vbox)
+        self.window.show_all()
+
+class PatronsView(object):
+    def __init__(self, gshell):
+        self.gshell = gshell
+
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.width = 0
+        self.height = 0
+
+        label1 = gtk.Label("""
+Patrons: 
+""")
+        label2 = gtk.Label("""
+We don't have any Patrons yet! Be the first one!
+""")
+
+        hbox = gtk.HBox(False, 0)
+        hbox.pack_start(label1, False, True, 0)
+        hbox.pack_start(label2, False, True, 0)
+
+        self.window.add(hbox)
+        self.window.show_all()
+
 class Main(object):
     def __init__(self, gshell):
         self.gshell = gshell
         self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.window.connect("destroy", self.quit)
 
         # Memory view
         self.mbButton = gtk.Button("Memory (BYTE+ASCII)")
@@ -784,6 +824,14 @@ class Main(object):
         self.hButton = gtk.Button("TProbe Shell")
         self.hButton.connect("clicked", self.toggle, (self.gshell.hs, TProbeShell))
 
+        # About view
+        self.aButton = gtk.Button("About TProbe")
+        self.aButton.connect("clicked", self.toggle, (self.gshell.as_, AboutView))
+
+        # Patrons view
+        self.ptButton = gtk.Button("Patrons")
+        self.ptButton.connect("clicked", self.toggle, (self.gshell.pts, PatronsView))
+
         self.quitButton = gtk.Button("Exit GShell")
         self.quitButton.connect("clicked", self.quit)
 
@@ -794,12 +842,20 @@ class Main(object):
         self.vbox.pack_start(self.cButton, True, True, 0)
         self.vbox.pack_start(self.pButton, True, True, 0)
         self.vbox.pack_start(self.hButton, True, True, 0)
+        self.vbox.pack_start(self.aButton, True, True, 0)
+        self.vbox.pack_start(self.ptButton, True, True, 0)
         self.vbox.pack_start(self.quitButton, True, True, 0)
 
         self.window.add(self.vbox)
         self.window.show_all()
 
     def quit(self, widget, data=None):
+        for window_list in self.gshell.available:
+            for window in window_list:
+                window.window.destroy()
+        
+        self.window.destroy()
+
         gtk.main_quit()
         return True
 
@@ -811,6 +867,29 @@ class Main(object):
         (cat, window) = data
         cat.append(window(self.gshell))
         return True
+
+class GConsole(tprobe.AbstractTProbePlugin):
+    name = 'gshell'
+    w32gshell_list = ['WinXPSP2x86', 'WinXPSP3x86', 'VistaSP0x86', 'VistaSP1x86', 'Win7SP0x86', 'Win7SP1x86']
+
+
+    def after_validation(self):
+        frame = inspect.currentframe()
+
+        self.namespace = frame.f_globals.copy()
+        self.namespace.update(frame.f_locals)
+        self.namespace.update(self.functions.dict)
+
+
+    def calculate(self, core = None):
+        if self.core.config.opts['profile'] in self.w32gshell_list:
+            self.namespace['w32gshell']()
+        else:
+            print("Graphic shell not implemented for selected profile. \nPlease check for newest version.")
+
+    def render_text(self, shell):
+        pass
+        
 
 class GtkConsole(tprobe.AbstractTProbePlugin):
     name = 'w32gshell'
@@ -870,24 +949,30 @@ class GtkConsole(tprobe.AbstractTProbePlugin):
 #        self.settings = gtk.gtk_settings_get_default()
 #        self.settings.set_string_property("gtk-font-name", "Courier 8", "")
 
-        self.mb = MemoryView(self)
-        self.md = MemoryDwordView(self)
-        self.r = RegistersView(self)
-        self.c = CodeView(self)
-        self.p = ProcessView(self)
-        self.h = TProbeShell(self)
+        mb = MemoryView(self)
+        md = MemoryDwordView(self)
+        r = RegistersView(self)
+        c = CodeView(self)
+        p = ProcessView(self)
+        h = TProbeShell(self)
 
-        self.mbs = [self.mb]
-        self.mds = [self.md]
-        self.rs = [self.r]
-        self.cs = [self.c]
-        self.ps = [self.p]
-        self.hs = [self.h]
+        self.mbs = [mb]
+        self.mds = [md]
+        self.rs = [r]
+        self.cs = [c]
+        self.ps = [p]
+        self.hs = [h]
+        self.as_ = []
+        self.pts = []
 
+        self.available = [self.mbs, self.mds, self.rs, self.cs, self.ps, self.hs, self.as_, self.pts]
         self.refreshable = [self.mbs,self.mds, self.rs, self.cs, self.ps]
         
         self.m = Main(self)
 
+        #from pudb.remote import set_trace
+        #set_trace(term_size=(160, 60))
+
         gtk.main()
 
-
+        return False
