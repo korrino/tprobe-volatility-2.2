@@ -42,7 +42,6 @@ if sys.version_info < (2, 6, 0):
 try:
     import gdb #pylint: disable-msg=W0611,F0401
     import tprobe
-
     sys.argv = ["vol.py", "--profile=%s" % tprobe.profile, "tprobe"]
 
 except ImportError:

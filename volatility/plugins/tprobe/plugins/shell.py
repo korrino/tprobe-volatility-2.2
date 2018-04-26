@@ -74,5 +74,11 @@ class InteractiveShell(tprobe.AbstractTProbePlugin):
                 import readline
             except ImportError:
                 pass
-        console.interact("Welcome in TProbe shell plugin.")
+
+        import tprobe
+        if hasattr(tprobe, 'directly_to_gshell'):
+            if(tprobe.directly_to_gshell):
+                namespace['gshell']()
+        else:
+            console.interact("Welcome in TProbe shell plugin.")
 

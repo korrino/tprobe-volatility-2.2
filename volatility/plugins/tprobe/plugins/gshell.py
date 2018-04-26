@@ -70,6 +70,7 @@ class TProbeShell(object):
 
         self.textBuffer = gtk.TextBuffer()
         self.output = gtk.TextView()
+        self.output.set_buffer(self.textBuffer)
         self.output.connect("size-allocate", self.scrollDown)
         self.swh = gtk.ScrolledWindow()
         self.swh.add(self.output)
@@ -761,38 +762,57 @@ class AboutView(object):
         self.gshell = gshell
 
         self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
-        self.width = 0
-        self.height = 0
 
-        label = gtk.Label("Test")
+        from gi.repository import GdkPixbuf
+        logo = GdkPixbuf.Pixbuf.new_from_file_at_size("korrino.png", 200, 200)
 
-        vbox = gtk.VBox(False, 0)
-        vbox.pack_start(label, False, True, 0)
+        about = gtk.AboutDialog()
+        about.set_title("About TProbe")
+        about.set_program_name("TProbe")
+        about.set_name("TProbe")
+        about.set_version("1.0")
+        about.set_comments("sadf sadf asdf sadf asdf asdfa afds a")
+        about.set_website("http://www.korrino.com")
+        about.set_website_label("http://www.korrino.com")
+        about.set_logo(logo)
+        about.connect("response", self.destroy)
 
-        self.window.add(vbox)
-        self.window.show_all()
+        self.about = about
+
+        about.run()
+
+    def destroy(self, widget, data):
+        self.about.destroy()
+        
 
 class PatronsView(object):
     def __init__(self, gshell):
         self.gshell = gshell
 
         self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
-        self.width = 0
-        self.height = 0
+        from gi.repository import GdkPixbuf
+        logo = GdkPixbuf.Pixbuf.new_from_file_at_size("korrino.png", 200, 200)
 
-        label1 = gtk.Label("""
-Patrons: 
+        patrons = gtk.AboutDialog()
+        patrons.set_title("Korrino Patrons")
+        patrons.set_program_name("Patrons")
+        patrons.set_comments("""
+Korrino Patrons keep us alive!
+
+We have not Patrons yet. Be the first one!
+
 """)
-        label2 = gtk.Label("""
-We don't have any Patrons yet! Be the first one!
-""")
+        patrons.set_website("http://www.korrino.com")
+        patrons.set_website_label("http://www.korrino.com")
+        patrons.set_logo(logo)
+        patrons.connect("response", self.destroy)
 
-        hbox = gtk.HBox(False, 0)
-        hbox.pack_start(label1, False, True, 0)
-        hbox.pack_start(label2, False, True, 0)
+        self.patrons = patrons
 
-        self.window.add(hbox)
-        self.window.show_all()
+        patrons.run()
+
+    def destroy(self, widget, data):
+        self.patrons.destroy()
 
 class Main(object):
     def __init__(self, gshell):
@@ -946,8 +966,8 @@ class GtkConsole(tprobe.AbstractTProbePlugin):
                     component.refresh()
 
     def render_text(self, shell):
-#        self.settings = gtk.gtk_settings_get_default()
-#        self.settings.set_string_property("gtk-font-name", "Courier 8", "")
+        self.settings = gtk.Settings.get_default()
+        self.settings.set_string_property("gtk-font-name", "Courier 8", "")
 
         mb = MemoryView(self)
         md = MemoryDwordView(self)
