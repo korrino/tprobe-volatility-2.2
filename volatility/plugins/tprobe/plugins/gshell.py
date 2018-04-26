@@ -275,7 +275,7 @@ class MemoryView(object):
 
     def button_pressed(self, widget, event):
         if(event.button == 3):
-            widget.popup(None, None, None, event.button, event.time)
+            widget.popup(None, None, None, None, event.button, event.time)
             return True
         return False
 
@@ -414,7 +414,7 @@ class MemoryDwordView(MemoryView):
 """
     def button_pressed(self, widget, event):
         if(event.button == 3):
-            widget.popup(None, None, None, event.button, event.time)
+            widget.popup(None, None, None, None, event.button, event.time)
             return True
         return False
 """
@@ -588,7 +588,7 @@ class CodeView(object):
 
     def button_pressed(self, widget, event):
         if(event.button == 3):
-            widget.popup(None, None, None, event.button, event.time)
+            widget.popup(None, None, None, None, event.button, event.time)
             return True
         return False
 
@@ -753,7 +753,7 @@ class ProcessView(object):
 
     def button_pressed(self, widget, event):
         if(event.button == 3):
-            widget.popup(None, None, None, event.button, event.time)
+            widget.popup(None, None, None, None, event.button, event.time)
             return True
         return False
 
@@ -943,8 +943,9 @@ class GtkConsole(tprobe.AbstractTProbePlugin):
 #        self.bp_index = BptIndex()
 
     def log(self, text):
-        txtBuf = self.h.textBuffer
-        txtBuf.insert(txtBuf.get_end_iter(), text+"\n")
+        if(len(self.hs) > 0):
+            txtBuf = self.hs[0].textBuffer
+            txtBuf.insert(txtBuf.get_end_iter(), text+"\n")
 
     def calculate(self, core = None):
 #        self.addrspace = self.core.addrspace
