@@ -635,7 +635,7 @@ class CodeView(object):
         hbox.pack_start(label, False, True, 0)
         hbox.pack_start(entry, False, True, 0)
 #        hbox.pack_start(button, False, 0)
-        self.dialog = gtk.Dialog(title="Goto", parent=None, flags=0, buttons=None)
+        self.dialog = gtk.Dialog(title="Goto", parent=None, flags=0)
         self.dialog.action_area.pack_start(hbox, True, True, 0)
         self.dialog.show_all()
         return True

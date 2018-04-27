@@ -224,9 +224,12 @@ class WaitForEproc(tprobe.AbstractTProbePlugin):
         location = "*0x%x" % XPSP3_CR3_SWITCH
         gdb.execute('b {0} if $cr3 == {1}'.format(location, cr3),False, True)
         gdb.execute('c')
-        # removing bp, ugly
-        if(gdb.breakpoints()[-1].location == location):
-            gdb.breakpoints()[-1].delete()
+
+        for breakpoint in gdb.breakpoints():
+#            print("%s %s" % (breakpoint.location[:-1], location))
+            if(breakpoint.location.strip() == location.strip()):
+                breakpoint.delete()
+
         return self.functions.gr("cr3")
 
     def render_text(self, cr3):
