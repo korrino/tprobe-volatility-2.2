@@ -771,7 +771,12 @@ class AboutView(object):
         about.set_program_name("TProbe")
         about.set_name("TProbe")
         about.set_version("1.0")
-        about.set_comments("sadf sadf asdf sadf asdf asdfa afds a")
+        about.set_comments("""
+Transcendent debugger for qemu machine
+Using Qemu v1.3.91
+Using GDB v7.12.1
+Using Volatility v2.2
+        """)
         about.set_website("http://www.korrino.com")
         about.set_website_label("http://www.korrino.com")
         about.set_logo(logo)
