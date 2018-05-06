@@ -802,7 +802,7 @@ class PatronsView(object):
         patrons.set_title("Korrino Patrons")
         patrons.set_program_name("Patrons")
         patrons.set_comments("""
-Korrino Patrons keep us alive!
+Patrons keep us alive!
 
 We have not Patrons yet. Be the first one!
 
