@@ -47,9 +47,10 @@ try:
 except ImportError:
     pass
 
-
-print "Specify additional parameters to {0}".format(sys.argv)
-
+print """
+Currently loaded profile: %s.
+If you want to change the profile or other settings, please refer to tprobe.py in tprobe-volatility installation directory.
+""" % tprobe.profile
 
 try:
     import psyco #pylint: disable-msg=W0611,F0401

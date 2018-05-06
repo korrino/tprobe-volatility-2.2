@@ -804,7 +804,7 @@ class PatronsView(object):
         patrons.set_comments("""
 Patrons keep us alive!
 
-We have not Patrons yet. Be the first one!
+We have no Patrons yet. Be the first one!
 
 """)
         patrons.set_website("http://www.korrino.com")
