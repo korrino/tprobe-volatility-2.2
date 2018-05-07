@@ -24,4 +24,5 @@
 profile = 'WinXPSP2x86'
 #profile = 'WinXPSP3x86'
 directly_to_gshell = True
-
+font = 'Courier 10'
+home_path = '.'

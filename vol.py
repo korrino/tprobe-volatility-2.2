@@ -42,7 +42,7 @@ if sys.version_info < (2, 6, 0):
 try:
     import gdb #pylint: disable-msg=W0611,F0401
     import tprobe
-    sys.argv = ["vol.py", "--profile=%s" % tprobe.profile, "tprobe"]
+    sys.argv = ["vol.py", "--profile=%s" % tprobe.profile, "--font=%s" % tprobe.font, "--home_path=%s" % tprobe.home_path, "tprobe"]
 
 except ImportError:
     pass
@@ -79,6 +79,11 @@ config.add_option("INFO", default = None, action = "store_true",
                   cache_invalidator = False,
                   help = "Print information about all registered objects")
 
+config.add_option("font", default = "Courier 10", dest = "font",
+                  help = "Font to be used in gshell")
+
+config.add_option("home_path", default = ".", dest = "home_path",
+                  help = "Directory with vol.py")
 
 def list_plugins():
     result = "\n\tSupported Plugin Commands:\n\n"

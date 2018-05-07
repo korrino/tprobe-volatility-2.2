@@ -22,40 +22,6 @@ from shell import GdbConsole
 from volatility.plugins.tprobe.core import Breakpoint
 from threading import Thread
 
-"""
-class GdbConsole(code.InteractiveConsole): 
-    def runsource(self, source, filename="<input>", symbol="single"):
-        if(source == ""): return False
-        try:
-            cmds = source.split()
-            if(self.shell.functions.dict.has_key(cmds[0])): 
-                source = cmds[0] + "("
-                for cmd in cmds[1:]:
-                    source += "%s," % cmd
-                source += ")"
-            code = self.compile(source, filename, symbol)
-        except (OverflowError, ValueError):
-            # Case 1
-            self.showsyntaxerror(filename)
-            return False
-        #hook syntax error exception
-        except (SyntaxError):
-            try:
-                execute(source)
-                return False
-            except (RuntimeError):
-                print("Runtime error, check your syntax. Try: help")
-                return False
-
-        if code is None:
-            # Case 2
-            return True
-
-        # Case 3
-        self.runcode(code)
-        return False
-"""
-
 class TProbeShell(object):
     def __init__(self, gshell):
         self.gshell = gshell
@@ -65,7 +31,7 @@ class TProbeShell(object):
         self.history_pos = 0x0
         self.history_size = 0x0
 
-        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="Interactive Shell")
         self.window.connect("key_press_event", self.key_pressed)
 
         self.textBuffer = gtk.TextBuffer()
@@ -141,7 +107,7 @@ class MemoryView(object):
             self.offset = address
             self.data = self.gshell.core.addrspace.read(self.offset, 0x100)
 
-        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="Memory View")
 
         self.width = 0
         self.height = 0
@@ -283,7 +249,7 @@ class MemoryDwordView(MemoryView):
     def __init__(self, gshell):
         self.gshell = gshell
         self.sync_reg = "esp"
-        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="Memory View - DWORD")
 
         self.width = 0
         self.height = 0
@@ -425,7 +391,7 @@ class RegistersView(object):
         self.gshell = gshell
         self.functions = gshell.functions
 
-        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="Registers View")
 
         self.regs1view = self.generate_view(self.get_regs1_model, "Register", "Value")
         self.regs2view = self.generate_view(self.get_regs2_model, "Register", "Value")
@@ -509,7 +475,7 @@ class CodeView(object):
         self.dialog = None
         self.offset = None
 
-        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="Code View")
         self.window.connect("key_press_event", self.key_pressed)
 
         self.menu = gtk.Menu()
@@ -680,7 +646,7 @@ class ProcessView(object):
     def __init__(self, gshell):
         self.gshell = gshell
 
-        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="Process View")
 
         self.view = gtk.TreeView(self.get_model())
         off_col = gtk.TreeViewColumn("Process Name")
@@ -761,10 +727,10 @@ class AboutView(object):
     def __init__(self, gshell):
         self.gshell = gshell
 
-        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="About TProbe")
 
         from gi.repository import GdkPixbuf
-        logo = GdkPixbuf.Pixbuf.new_from_file_at_size("korrino.png", 200, 200)
+        logo = GdkPixbuf.Pixbuf.new_from_file_at_size("%s/korrino.png" % self.gshell.home_path, 200, 200)
 
         about = gtk.AboutDialog()
         about.set_title("About TProbe")
@@ -794,9 +760,9 @@ class PatronsView(object):
     def __init__(self, gshell):
         self.gshell = gshell
 
-        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="Korrino Patrons")
         from gi.repository import GdkPixbuf
-        logo = GdkPixbuf.Pixbuf.new_from_file_at_size("korrino.png", 200, 200)
+        logo = GdkPixbuf.Pixbuf.new_from_file_at_size("%s/korrino.png" % self.gshell.home_path, 200, 200)
 
         patrons = gtk.AboutDialog()
         patrons.set_title("Korrino Patrons")
@@ -807,8 +773,8 @@ Patrons keep us alive!
 We have no Patrons yet. Be the first one!
 
 """)
-        patrons.set_website("http://www.korrino.com")
-        patrons.set_website_label("http://www.korrino.com")
+        patrons.set_website("http://www.patreon.com/korrino")
+        patrons.set_website_label("http://www.patreon.com/korrino")
         patrons.set_logo(logo)
         patrons.connect("response", self.destroy)
 
@@ -822,7 +788,7 @@ We have no Patrons yet. Be the first one!
 class Main(object):
     def __init__(self, gshell):
         self.gshell = gshell
-        self.window = gtk.Window(gtk.WindowType.TOPLEVEL)
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="TProbe Main")
         self.window.connect("destroy", self.quit)
 
         # Memory view
@@ -973,7 +939,9 @@ class GtkConsole(tprobe.AbstractTProbePlugin):
 
     def render_text(self, shell):
         self.settings = gtk.Settings.get_default()
-        self.settings.set_string_property("gtk-font-name", "Courier 8", "")
+        #self.settings.set_string_property("gtk-font-name", "Courier 8", "")
+        self.settings.set_string_property("gtk-font-name", self.core.config.opts['font'], "")
+        self.home_path = self.core.config.opts['home_path']
 
         mb = MemoryView(self)
         md = MemoryDwordView(self)
