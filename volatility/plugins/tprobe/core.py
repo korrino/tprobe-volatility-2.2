@@ -64,7 +64,7 @@ class BptIndex(object):
         self.readBpts()
 
     def delBpt(self, address):
-        bpt = self.bpts["0x08%x" % address]
+        bpt = self.bpts["0x%08x" % address]
         gdb.execute('del {0}'.format(bpt.num),False, True)
         self.readBpts()
 
@@ -279,7 +279,7 @@ class AbstractVolatilityPluginWrapper(AbstractTProbePlugin):
         print "options"
         pprint(config.options)
 
-      
+
 
 class tprobe(commands.Command):
     """Shell in the memory image"""
