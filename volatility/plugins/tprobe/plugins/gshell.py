@@ -201,14 +201,14 @@ class MemoryView(object):
         # update_context not necessary, we might want to scroll other context's memory
         #self.gshell.functions.update_context()
 #        space = self.gshell.core.reading_context or self.gshell.core.current_context
-        space = (self.gshell.core.reading_context or self.gshell.core.current_context).get_process_address_space()
+        space = self.gshell.core.current_EPROCESS.get_process_address_space()
         self.data = space.read(self.offset, 0x100)
         self.treeview.set_model(self.get_model())
 
     def refresh(self):
         if(self.sync_reg != None):
             self.offset = self.gshell.functions.gr(self.sync_reg)
-        space = (self.gshell.core.reading_context or self.gshell.core.current_context).get_process_address_space()
+        space = self.gshell.core.current_EPROCESS.get_process_address_space()
         self.data = space.read(self.offset, 0x100)
         self.treeview.set_model(self.get_model())
 
@@ -356,13 +356,13 @@ class MemoryDwordView(MemoryView):
         # like refresh only without updatnig offset
         #self.gshell.functions.update_context()
 #        space = self.gshell.core.reading_context or self.gshell.core.current_context
-        space = (self.gshell.core.reading_context or self.gshell.core.current_context).get_process_address_space()
+        space = self.gshell.core.current_EPROCESS.get_process_address_space()
         self.data = space.read(self.offset, 0x40)
         self.treeview.set_model(self.get_model())
 
     def refresh(self):
         self.offset = self.gshell.functions.gr(self.sync_reg)
-        space = (self.gshell.core.reading_context or self.gshell.core.current_context).get_process_address_space()
+        space = self.gshell.core.current_EPROCESS.get_process_address_space()
         self.data = space.read(self.offset, 0x40)
         self.treeview.set_model(self.get_model())
 
@@ -649,7 +649,7 @@ class CodeView(object):
     def get_model(self):
         liststore = gtk.ListStore(str, str, str)
     
-        space = (self.gshell.core.reading_context or self.gshell.core.current_context).get_process_address_space()
+        space = self.gshell.core.current_EPROCESS.get_process_address_space()
         for line in self.gshell.functions.dis.calculate(self.offset, space = space):
             addr = "0x%08x" % line[0]
             if(addr in self.gshell.core.bp_index.bpts.keys()):
@@ -684,8 +684,8 @@ class ProcessView(object):
         menu_item1.connect("activate", self.activate_wait_for_task_switch, "test")
         self.menu.append(menu_item1)
         menu_item1.show()
-        menu_item2 = gtk.MenuItem("Set reading context")
-        menu_item2.connect("activate", self.activate_set_reading_context, "test")
+        menu_item2 = gtk.MenuItem("Set EPROCESS perspective")
+        menu_item2.connect("activate", self.activate_set_EPROCESS, "test")
         self.menu.append(menu_item2)
         menu_item2.show()
 
@@ -704,17 +704,17 @@ class ProcessView(object):
             self.gshell.functions.eprocWait.calculate(int(value, 16))
         self.gshell.refresh()
 
-    def activate_set_reading_context(self, widget, data):
+    def activate_set_EPROCESS(self, widget, data):
         selection = self.view.get_selection()
         (model, pathlist) = selection.get_selected_rows()
         print(len(pathlist))
         for path in pathlist :
             tree_iter = model.get_iter(path)
             value = model.get_value(tree_iter,1)
-            self.gshell.log("Setting reading context to: %s\n" % value)
+            self.gshell.log("Setting reading EPROCESS to: %s\n" % value)
 #            self.gshell.functions.cc.calculate(int(value, 16))
-            self.gshell.core.reading_context = self.gshell.core.functions.get_context(int(value, 16))
-            if(cfg.debug == True): self.gshell.log("Reading context: 0x%x\n" % self.gshell.core.current_context.v())
+            self.gshell.core.current_EPROCESS = self.gshell.core.functions.get_EPROCESS(int(value, 16))
+            if(cfg.debug == True): self.gshell.log("Reading EPROCESS: 0x%x\n" % self.gshell.core.current_EPROCESS.v())
         self.gshell.refresh()
 
     def refresh(self):
@@ -727,10 +727,10 @@ class ProcessView(object):
 
         for proc in self.gshell.functions.get_process_list.calculate():
             color = "white"
-            if(self.gshell.core.reading_context == proc.v()):
+            if(self.gshell.core.current_EPROCESS == proc.v()):
                 color = "green"
 #                liststore.append([self.gshell.functions.get_process_name(proc), "%08x" % proc.v(), "green"])
-            if(self.gshell.core.current_context == proc.v()):
+            if(self.gshell.core.current_EPROCESS == proc.v()):
 #                liststore.append([self.gshell.functions.get_process_name(proc), "%08x" % proc.v(), "blue"])
                 color = "blue"
             liststore.append(["%s" % self.gshell.functions.get_process_name(proc), "%08x" % proc.v(), color])
@@ -925,8 +925,7 @@ class GtkConsole(tprobe.AbstractTProbePlugin):
 #        self.core = core
         self.console = GdbConsole(namespace)
         self.console.shell = self
-        self.core.current_context = self.functions.get_context()
-        self.core.reading_context = self.core.current_context
+        self.core.current_EPROCESS = self.functions.get_EPROCESS()
 
 #        self.clipboard = gtk.Clipboard()
         self.clipboard = gtk.Clipboard.get(gdk.SELECTION_CLIPBOARD)
@@ -946,7 +945,7 @@ class GtkConsole(tprobe.AbstractTProbePlugin):
         return self
 
     def refresh(self, component=None, category=None):
-        self.core.functions.update_context.calculate()
+        self.core.functions.uce.calculate()
         if(component != None):
             component.refresh()
         if(category != None):

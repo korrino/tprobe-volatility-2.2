@@ -13,7 +13,7 @@ class GetWindowsProcessName(tprobe.AbstractTProbeApiFunction):
 
     def calculate(self, proc = None):
     	if proc == None:
-            proc = self.core.current_context
+            proc = self.core.current_EPROCESS
         return proc.ImageFileName
 
 class GetWindowsProcessId(tprobe.AbstractTProbeApiFunction):
@@ -21,7 +21,7 @@ class GetWindowsProcessId(tprobe.AbstractTProbeApiFunction):
 
     def calculate(self, proc = None):
     	if proc == None:
-            proc = self.core.current_context
+            proc = self.core.current_EPROCESS
         return proc.UniqueProcessId.v()
 
 class GetWindowsProcessParentId(tprobe.AbstractTProbeApiFunction):
@@ -29,7 +29,7 @@ class GetWindowsProcessParentId(tprobe.AbstractTProbeApiFunction):
 
     def calculate(self, proc = None):
     	if proc == None:
-            proc = self.core.current_context
+            proc = self.core.current_EPROCESS
         return proc.InheritedFromUniqueProcessId.v()
 
 class WindowsPs(tprobe.AbstractTProbePlugin):
@@ -49,88 +49,115 @@ class WindowsPs(tprobe.AbstractTProbePlugin):
 				eproc.obj_offset
 			)
 
-class WindowsChangeContext(tprobe.AbstractTProbePlugin):
-    name = 'cc'
-    dependencies = ['get_context', 'get_process_name','get_process_id','get_process_parent_id']
+class WindowsChangeEPROCESS(tprobe.AbstractTProbePlugin):
+    name = 'ce'
+    dependencies = ['get_EPROCESS', 'get_process_name','get_process_id','get_process_parent_id']
 
     def calculate(self, offset = None, pid = None, name = None, dtb = None):
-        self.core.current_context = self.functions.get_context(offset = offset, pid = pid, name = name, dtb = dtb)
-    	return self.core.current_context
+        self.core.current_EPROCESS = self.functions.get_EPROCESS(offset = offset, pid = pid, name = name, dtb = dtb)
+    	return self.core.current_EPROCESS
 
-    def render_text(self, context):
+    def render_text(self, EPROCESS):
     	f = self.functions
-    	print "Current context: process {0}, pid={1}, ppid={2} DTB={3:#x}".format(
-    		f.get_process_name(context),
-			f.get_process_id(context),
-			f.get_process_parent_id(context),
-			context.Pcb.DirectoryTableBase.v()
+    	print "Current EPROCESS: process {0}, pid={1}, ppid={2} DTB={3:#x}".format(
+    		f.get_process_name(EPROCESS),
+			f.get_process_id(EPROCESS),
+			f.get_process_parent_id(EPROCESS),
+			EPROCESS.Pcb.DirectoryTableBase.v()
 		)
 
-class UpdateCurrentContext(tprobe.AbstractTProbeApiFunction):
-    name = 'update_context'
-    dependencies = ['get_context', 'gr']
+class UpdateCurrentEPROCESS(tprobe.AbstractTProbeApiFunction):
+    name = 'uce'
+    dependencies = ['get_EPROCESS', 'gr']
 
     def calculate(self):
         dtb = int(self.core.functions.gr("cr3"))
-        self.core.current_context = self.core.functions.get_context(dtb = dtb)
-        self.core.addrspace = self.core.current_context.get_process_address_space()
-        return self.core.current_context
+        self.core.current_EPROCESS = self.core.functions.get_EPROCESS(dtb = dtb)
+        self.core.addrspace = self.core.current_EPROCESS.get_process_address_space()
+        return self.core.current_EPROCESS
 
-class GetWindowsContext(tprobe.AbstractTProbeApiFunction):
-    name = 'get_context'
-    dependencies = ['create_process_object','get_process_list','get_process_name', 'get_process_id', 'get_process_parent_id']
+class GetWindowsEPROCESSByPID(tprobe.AbstractTProbeApiFunction):
+    name = 'get_EPROCESS_by_pid'
+    dependencies = ['offset_to_EPROCESS','get_process_list','get_process_name', 'get_process_id', 'get_process_parent_id']
+
+    def calculate(self, pid):
+    	functions = self.functions
+        offsets = []
+        for process in functions.get_process_list():
+            if functions.get_process_id(process) == pid:
+                offsets.append(process)
+        if not offsets:
+            print "Unable to find process matching pid {0}".format(pid)
+            return
+        elif len(offsets) > 1:
+            print "Multiple processes match {0}, please specify by offset".format(pid)
+            print "Matching processes:"
+            functions.ps(offsets)
+            return
+        else:
+            offset = offsets[0].v()
+            return offset
+
+class GetWindowsEPROCESSByName(tprobe.AbstractTProbeApiFunction):
+    name = 'get_EPROCESS_by_name'
+    dependencies = ['offset_to_EPROCESS','get_process_list','get_process_name', 'get_process_id', 'get_process_parent_id']
+
+    def calculate(self, name):
+    	functions = self.functions
+        offsets = []
+        for process in functions.get_process_list():
+            if functions.get_process_name(process).find(name) >= 0:
+                offsets.append(process)
+        if not offsets:
+            print "Unable to find process matching name {0}".format(name)
+            return
+        elif len(offsets) > 1:
+            print "Multiple processes match name {0}, please specify by PID or offset".format(name)
+            print "Matching processes:"
+            functions.ps(offsets)
+            return
+        else:
+            offset = offsets[0].v()
+            return offset
+
+class GetWindowsEPROCESSByDTB(tprobe.AbstractTProbeApiFunction):
+    name = 'get_EPROCESS_by_dtb'
+    dependencies = ['offset_to_EPROCESS','get_process_list','get_process_name', 'get_process_id', 'get_process_parent_id']
+
+    def calculate(self, dtb):
+    	functions = self.functions
+        offsets = []
+        for process in functions.get_process_list(): #previously was _id, this was a mistake?
+            if dtb == process.Pcb.DirectoryTableBase.v():
+                offsets.append(process)
+        if not offsets:
+#            print "Unable to find process matching name {0}".format(name)
+            return self.calculate(name="System")
+        else:
+            offset = offsets[0].v()
+            return offset
+
+class GetWindowsEPROCESS(tprobe.AbstractTProbeApiFunction):
+    name = 'get_EPROCESS'
+    dependencies = ['offset_to_EPROCESS','get_process_list','get_process_name', 'get_process_id', 'get_process_parent_id']
 
     def calculate(self, offset = None, pid = None, name = None, dtb = None):
-    	f = self.functions
+    	functions = self.functions
     	if pid is not None:
-            offsets = []
-            for p in f.get_process_list():
-                if f.get_process_id(p) == pid:
-                    offsets.append(p)
-            if not offsets:
-                print "Unable to find process matching pid {0}".format(pid)
-                return
-            elif len(offsets) > 1:
-                print "Multiple processes match {0}, please specify by offset".format(pid)
-                print "Matching processes:"
-                f.ps(offsets)
-                return
-            else:
-                offset = offsets[0].v()
+            offset = self.functions.get_EPROCESS_by_pid(pid)
         elif name is not None:
-            offsets = []
-            for p in f.get_process_list():
-                if f.get_process_name(p).find(name) >= 0:
-                    offsets.append(p)
-            if not offsets:
-                print "Unable to find process matching name {0}".format(name)
-                return
-            elif len(offsets) > 1:
-                print "Multiple processes match name {0}, please specify by PID or offset".format(name)
-                print "Matching processes:"
-                f.ps(offsets)
-                return
-            else:
-                offset = offsets[0].v()
+            offset = self.functions.get_EPROCESS_by_name(name)
         # TODO remove or enable only for windows 
         elif dtb is not None:
-            offsets = []
-            for p in f.get_process_list(): #previously was _id, this was a mistake?
-                if dtb == p.Pcb.DirectoryTableBase.v():
-                    offsets.append(p)
-            if not offsets:
-#                print "Unable to find process matching name {0}".format(name)
-                return self.calculate(name="System")
-            else:
-                offset = offsets[0].v()
+            offset = self.functions.get_EPROCESS_by_dtb(dtb)
         elif offset is None:
-            for p in f.get_process_list():
-                return p
+            for process in functions.get_process_list():
+                return process
 
-        return f.create_process_object(offset)
+        return functions.offset_to_EPROCESS(offset)
 
-class CreateWindowsProcessObject(tprobe.AbstractTProbeApiFunction):
-    name = 'create_process_object'
+class OffsetToEPROCESS(tprobe.AbstractTProbeApiFunction):
+    name = 'offset_to_EPROCESS'
 
     def calculate(self, offset):
     	return obj.Object("_EPROCESS", offset = offset, vm = self.core.addrspace)

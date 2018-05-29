@@ -9,11 +9,8 @@ from volatility.plugins.tprobe.core import Breakpoint
 
 import pickle
 
-XPSP3_CR3_SWITCH = 0x804db9ce
-
 def get_reg(reg):
     return (reg, int(gdb.execute('info register {0}'.format(reg),False, True).split('\t')[0].split(' ')[-1],0))
-
 
 class ViewRegisters(tprobe.AbstractTProbePlugin):
     name = 'regs'
@@ -112,7 +109,9 @@ class StackUnwind(tprobe.AbstractTProbePlugin):
 
     def calculate(self):
         esp = self.core.functions.gr("esp")
-        space = (self.core.reading_context or self.core.current_context) # or self.functions.get_context()).get_process_address_space() 
+#        space = (self.core.reading_context or self.core.current_context) # or self.functions.get_context()).get_process_address_space() # to raczej zle
+#        space = self.core.addrspace
+        space = self.core.current_EPROCESS.get_process_address_space()
         data = space.read(esp, 0x10*0x4)
         entry_count = int(len(data)/4)
         fmts = "<"
@@ -186,7 +185,7 @@ class IterateList(tprobe.AbstractTProbeApiFunction):
         objects of type objname. The value of offset should be set to the
         offset of the _LIST_ENTRY within the desired object."""
  
-        vm = self.core.current_context.get_process_address_space()
+        vm = self.core.current_EPROCESS.get_process_address_space()
         seen = set()
 
         if fieldname:
@@ -292,12 +291,12 @@ class Eproc2Dtb(tprobe.AbstractTProbePlugin):
 
     def calculate(self, eproc_addr = None):
         if(eproc_addr == None):
-            if(self.core.current_context == None):
+            if(self.core.current_EPROCESS == None):
                 self.core.functions.cc.calculate()
-            context = self.core.current_context
+            EPROCESS = self.core.current_EPROCESS
         else:
-            context = self.functions.get_context(eproc_addr)
-        dtb = context.Pcb.DirectoryTableBase.v()
+            EPROCESS = self.functions.get_EPROCESS(eproc_addr)
+        dtb = EPROCESS.Pcb.DirectoryTableBase.v()
         return dtb
 
     def render_text(self, dtb):
@@ -343,7 +342,7 @@ class ImageName2DosHeader(tprobe.AbstractTProbePlugin):
     name = 'in2dh'
 
     def calculate(self, name):
-        modules = self.functions.e2imoml.calculate(self.core.current_context.v())
+        modules = self.functions.e2imoml.calculate(self.core.current_EPROCESS.v())
         found = None
         for module in modules:
             if(str(module.BaseDllName).upper() == name.upper()):
@@ -351,7 +350,7 @@ class ImageName2DosHeader(tprobe.AbstractTProbePlugin):
                 break
 
         if(found == None or not module.is_valid()): return None # maybe we should change to NoneObject?
-        dh = obj.Object("_IMAGE_DOS_HEADER", offset = found.DllBase.v(), vm = self.core.current_context.get_process_address_space())
+        dh = obj.Object("_IMAGE_DOS_HEADER", offset = found.DllBase.v(), vm = self.core.current_EPROCESS.get_process_address_space())
         return dh
 
     def render_text(self, dh):
@@ -362,7 +361,7 @@ class ImageBase2Module(tprobe.AbstractTProbePlugin):
     name = 'ib2mod'
 
     def calculate(self, ib_addr):
-        modules = self.functions.e2imoml.calculate(self.core.current_context.v())
+        modules = self.functions.e2imoml.calculate(self.core.current_EPROCESS.v())
         found = None
         for module in modules:
             if(module.DllBase == ib_addr):
@@ -380,7 +379,7 @@ class ImageBase2DosHeader(tprobe.AbstractTProbePlugin):
     name = 'ib2dh'
 
     def calculate(self, ib_addr):
-        dh = obj.Object("_IMAGE_DOS_HEADER", offset = ib_addr, vm = self.core.current_context.get_process_address_space())
+        dh = obj.Object("_IMAGE_DOS_HEADER", offset = ib_addr, vm = self.core.current_EPROCESS.get_process_address_space())
         return dh
 
     def render_text(self, dh):
@@ -391,7 +390,7 @@ class ImageBase2NtHeaders(tprobe.AbstractTProbePlugin):
 
     def calculate(self, ib_addr):
         dh = self.functions.ib2dh.calculate(ib_addr)
-        nth = obj.Object("_IMAGE_NT_HEADERS", offset = ib_addr + dh.e_lfanew.v(), vm = self.core.current_context.get_process_address_space())
+        nth = obj.Object("_IMAGE_NT_HEADERS", offset = ib_addr + dh.e_lfanew.v(), vm = self.core.current_EPROCESS.get_process_address_space())
         return nth
         
     def render_text(self, nth):
@@ -450,7 +449,7 @@ class ReloadSymbols(tprobe.AbstractTProbePlugin):
     def calculate(self):
         symbols_by_name = {}
         symbols_by_offset = {}
-        for mod in self.core.functions.e2imoml.calculate(self.core.current_context.v()):
+        for mod in self.core.functions.e2imoml.calculate(self.core.current_EPROCESS.v()):
             base = mod.DllBase
             name = mod.BaseDllName
             for export in mod.exports():
@@ -502,7 +501,7 @@ class DecodeOp1(tprobe.AbstractTProbeApiFunction):
         return self.core.functions.gr(reg)
 
     def read(self, addr, length):
-        space = (self.core.current_context or self.functions.get_context()).get_process_address_space() 
+        space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
         return space.read(addr, length)
 
     def decode_op1(self, op1):
@@ -542,14 +541,14 @@ class Si(tprobe.AbstractTProbePlugin):
 
     def calculate(self):
         gdb.execute("si")
-        self.core.functions.update_context.calculate()
+        self.core.functions.uce.calculate()
 
 class Ni(tprobe.AbstractTProbePlugin):
     name = 'ni'
 
     def calculate(self):
         eip = self.core.functions.gr("eip")
-        space = (self.core.current_context or self.functions.get_context()).get_process_address_space() 
+        space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
         factor = 0x20
 #        while(factor > 0x0):
 #            try:
@@ -563,25 +562,23 @@ class Ni(tprobe.AbstractTProbePlugin):
         if(instruction.find("CALL ") > -1):
 #        if True:
             neip = eip + size
-#            self.core.functions.update_context.calculate()
+#            self.core.functions.update_EPROCESS.calculate()
 #            self.core.gshell.log("test")
-#            self.core.bp_index.addBpt(Breakpoint(neip), self.core.current_context)
+#            self.core.bp_index.addBpt(Breakpoint(neip), self.core.current_EPROCESS)
 #            gdb.execute("cont")
 #            self.core.bp_index.delBpt(neip)
             gdb.execute("until *0x%x" % neip)
         else:
             self.core.functions.si()
-        # we need to update context
-        self.core.functions.update_context.calculate()
-        self.core.reading_context = self.core.current_context
+        # we need to update EPROCESS
+        self.core.functions.uce.calculate()
 
 class Until(tprobe.AbstractTProbePlugin):
     name = 'until'
     
     def calculate(self, addr):
         gdb.execute("until *0x%x" % addr)
-        self.core.functions.update_context.calculate()
-        self.core.reading_context = self.core.current_context
+        self.core.functions.uce.calculate()
 
 class SiAndDis(tprobe.AbstractTProbePlugin):
     name = 'sd'
@@ -592,7 +589,7 @@ class SiAndDis(tprobe.AbstractTProbePlugin):
 
 class Disassemble(tprobe.AbstractTProbePlugin):
     name = 'dis'
-    dependencies = ['get_context', 'dec_op1']
+    dependencies = ['get_EPROCESS', 'dec_op1']
 
     def calculate(self, address = None, length = 128, space = None, mode = None):
         """Disassemble code at a given address.
@@ -610,8 +607,7 @@ class Disassemble(tprobe.AbstractTProbePlugin):
             address = self.core.functions.gr("eip")
 
         if not space:
-#            space = (self.core.reading_context or self.core.current_context)
-            space = (self.core.current_context or self.functions.get_context()).get_process_address_space() 
+            space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
 
         if not sys.modules.has_key("distorm3"):
             print "ERROR: Disassembly unavailable, distorm not found"
@@ -655,7 +651,7 @@ class Disassemble(tprobe.AbstractTProbePlugin):
 
 class DisassembleMid(Disassemble):
     name = 'dism'
-    dependencies = ['get_context', 'dec_op1']
+    dependencies = ['get_EPROCESS', 'dec_op1']
 
     def calculate(self, address = None, line_count = 30, lines_prev=10, length = 356, space = None, mode = None):
         if(address == None):

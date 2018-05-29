@@ -310,8 +310,7 @@ class tprobe(commands.Command):
         self.argv = sys.argv
         self.functions = FunctionDict()
         self.config = config
-        self.current_context = None
-        self.reading_context = None
+        self.current_EPROCESS = None
         self.symbols_by_name = {}
         self.symbols_by_offset = {}
         self.kernel_symbols_by_name = {}
@@ -349,6 +348,8 @@ class tprobe(commands.Command):
         plugins_to_init = self.functions.dict.values()
         plugins_to_init.sort(cmp=(lambda x,y: 1 if x.after_validation_priority > y.after_validation_priority else -1))
         
+        self.current_EPROCESS = self.functions.uce() # windowsutils.UpdateCurrentEPROCESS
+
         for plugin in plugins_to_init:
             plugin.after_validation()
 

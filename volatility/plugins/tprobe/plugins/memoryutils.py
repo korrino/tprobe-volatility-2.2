@@ -5,11 +5,11 @@ import struct
 
 class CanonicalHexDump(tprobe.AbstractTProbePlugin):
 	name = 'db'
-	dependencies = ['get_context']
+	dependencies = ['get_EPROCESS']
 
 	def calculate(self, address, length = 0x80, space = None):
 		if not space:
-			space = (self.core.current_context or self.functions.get_context()).get_process_address_space() 
+			space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
 		
 		data = space.read(address, length)
 		if not data:
@@ -21,11 +21,11 @@ class CanonicalHexDump(tprobe.AbstractTProbePlugin):
 
 class PrintDwords(tprobe.AbstractTProbePlugin):
 	name = 'dd'
-	dependencies = ['get_context']
+	dependencies = ['get_EPROCESS']
 
 	def calculate(self, address, length = 0x80, space = None):
 		if not space:
-			space = (self.core.current_context or self.functions.get_context()).get_process_address_space() 
+			space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
 		
 		# round up to multiple of 4
 		if length % 4 != 0:
@@ -49,11 +49,11 @@ class PrintDwords(tprobe.AbstractTProbePlugin):
 
 class PrintQwords(tprobe.AbstractTProbePlugin):
 	name = 'dq'
-	dependencies = ['get_context']
+	dependencies = ['get_EPROCESS']
 
 	def calculate(self, address, length = 0x80, space = None):
 		if not space:
-			space = (self.core.current_context or self.functions.get_context()).get_process_address_space() 
+			space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
 		
 		# round up 
 		if length % 8 != 0:
@@ -71,14 +71,14 @@ class PrintQwords(tprobe.AbstractTProbePlugin):
 
 class DescribeObjectType(tprobe.AbstractTProbePlugin):
 	name = 'dt'
-	dependencies = ['get_context']
+	dependencies = ['get_EPROCESS']
 
 	def calculate(self, objct, address = None, address_space = None, return_object = False):
-		context = self.core.current_context or self.functions.get_context()
-		profile = (address_space or context.obj_vm).profile
+		EPROCESS = self.core.current_EPROCESS or self.functions.get_EPROCESS()
+		profile = (address_space or EPROCESS.obj_vm).profile
 
 		if address is not None:
-			objct = obj.Object(objct, address, address_space or context.get_process_address_space())
+			objct = obj.Object(objct, address, address_space or EPROCESS.get_process_address_space())
 		if return_object is True:
 			return objct
 
