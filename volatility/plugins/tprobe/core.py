@@ -311,10 +311,14 @@ class tprobe(commands.Command):
         self.functions = FunctionDict()
         self.config = config
         self.current_EPROCESS = None
+
         self.symbols_by_name = {}
         self.symbols_by_offset = {}
         self.kernel_symbols_by_name = {}
         self.kernel_symbols_by_offset = {}
+        self.current_modules = {}
+        self.current_symbols = {}
+
 #        self.bpts = {}
         self.bp_index = BptIndex()
 

@@ -193,9 +193,9 @@ class MemoryView(object):
         return False
 
     def onScroll(self, widget, data=None):
-        if(data.direction == gdk.SCROLL_UP):
+        if(data.direction == gdk.ScrollDirection.UP):
             self.offset -= 0x10
-        elif(data.direction == gdk.SCROLL_DOWN):
+        elif(data.direction == gdk.ScrollDirection.DOWN):
             self.offset += 0x10
         # like refresh only without updatnig offset
         # update_context not necessary, we might want to scroll other context's memory
@@ -646,6 +646,9 @@ class CodeView(object):
         self.offset = None
         self.view.set_model(self.get_model())
 
+    def refresh_no_reset(self):
+        self.view.set_model(self.get_model())
+
     def get_model(self):
         liststore = gtk.ListStore(str, str, str)
     
@@ -680,19 +683,101 @@ class ProcessView(object):
         self.view.append_column(instr_col)
 
         self.menu = gtk.Menu()
-        menu_item1 = gtk.MenuItem("Wait for task switch")
-        menu_item1.connect("activate", self.activate_wait_for_task_switch, "test")
-        self.menu.append(menu_item1)
-        menu_item1.show()
+#        menu_item1 = gtk.MenuItem("Wait for task switch")
+#        menu_item1.connect("activate", self.activate_wait_for_task_switch, "test")
+#        self.menu.append(menu_item1)
+#        menu_item1.show()
         menu_item2 = gtk.MenuItem("Set EPROCESS perspective")
         menu_item2.connect("activate", self.activate_set_EPROCESS, "test")
         self.menu.append(menu_item2)
         menu_item2.show()
 
+        symbols_menu = gtk.Menu()
+        menu_item3 = gtk.MenuItem("Goto symbol")
+        menu_item3.set_submenu(symbols_menu)
+        menu_item3.connect("activate", self.focus_symbols_menu, symbols_menu)
+
+        reload_item = gtk.MenuItem("<Reload modules>")
+        reload_item.connect("activate", self.trigger_modules_reload, None)
+        symbols_menu.append(reload_item)
+        reload_item.show()
+
+        self.menu.append(menu_item3)
+        menu_item3.show()
+
         self.view.connect_object("button_press_event", self.button_pressed, self.menu)
         self.window.add(self.view)
         self.window.show_all()
 
+
+    def symbol_breakpoint(self, widget, data):
+        self.gshell.log("Inserted breakpoint at: 0x%08x:0x%08x" % (self.gshell.core.current_EPROCESS.v() , data))
+        self.gshell.core.functions.b.calculate(location = data, eproc = self.gshell.core.current_EPROCESS)
+
+    def symbol_goto(self, widget, data):
+        if(len(self.gshell.cs) < 1):
+            # spawn CodeView
+            return
+
+        self.gshell.log("Going to: 0x%08x" % data)
+        code_view = self.gshell.cs[0]
+        code_view.offset = data
+        code_view.refresh_no_reset()
+
+    def trigger_symbols_reload(self, widget, data):
+        module = data
+        self.activate_set_EPROCESS(widget, data)
+        self.gshell.core.functions.reload_module_symbols.calculate(module)
+        self.gshell.log("Symbols reloaded: %s" % module)
+        self.gshell.log(str(self.gshell.core.current_symbols[module]))
+
+    def trigger_modules_reload(self, widget, data):
+        self.activate_set_EPROCESS(widget, data)
+        self.gshell.core.functions.reload_current_modules.calculate()
+        self.gshell.log("Modules reloaded")
+
+    def focus_module_menu(self, widget, data):
+        module, module_menu = data
+        symbols = self.gshell.core.current_symbols[module]
+
+        for symbol in sorted(symbols):
+            symbol_menu = gtk.Menu()
+            menu_item = gtk.MenuItem(symbol)
+            menu_item.set_submenu(symbol_menu)
+#            menu_item.connect("activate", self.symbol_goto, symbols[symbol])
+
+            symbol_menu_item_1 = gtk.MenuItem("Goto in Code View")
+            symbol_menu_item_1.connect("activate", self.symbol_goto, symbols[symbol])
+            symbol_menu.append(symbol_menu_item_1)
+            symbol_menu_item_1.show()
+
+            symbol_menu_item_2 = gtk.MenuItem("Insert breakpoint")
+            symbol_menu_item_2.connect("activate", self.symbol_breakpoint, symbols[symbol])
+            symbol_menu.append(symbol_menu_item_2)
+            symbol_menu_item_2.show()
+
+            module_menu.append(menu_item)
+            menu_item.show()
+
+    def focus_symbols_menu(self, widget, data):
+        symbols_menu = data
+        modules = self.gshell.core.current_modules
+
+        for module in sorted(modules):
+            module_menu = gtk.Menu()
+            menu_item = gtk.MenuItem(module)
+            menu_item.set_submenu(module_menu)
+            menu_item.connect("activate", self.focus_module_menu, (module, module_menu))
+
+            reload_item = gtk.MenuItem("<Reload symbols>")
+            reload_item.connect("activate", self.trigger_symbols_reload, module)
+            module_menu.append(reload_item)
+            reload_item.show()
+
+            symbols_menu.append(menu_item)
+            menu_item.show()
+
+    '''
     def activate_wait_for_task_switch(self, widget, data):
         selection = self.view.get_selection()
         (model, pathlist) = selection.get_selected_rows()
@@ -703,6 +788,7 @@ class ProcessView(object):
             self.gshell.log("Waiting for task switch: %s\n" % value)
             self.gshell.functions.eprocWait.calculate(int(value, 16))
         self.gshell.refresh()
+    '''
 
     def activate_set_EPROCESS(self, widget, data):
         selection = self.view.get_selection()

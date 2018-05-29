@@ -143,6 +143,37 @@ class LoadBpList(tprobe.AbstractTProbePlugin):
 class SetBp(tprobe.AbstractTProbePlugin):
     name = 'b'
 
+    def calculate(self, location = None, eproc = None):
+        if(location == None):
+            location = self.core.functions.gr("eip")
+
+        if(isinstance(location, int)):
+            address = location
+        elif(isinstance(location, str)):
+            try:
+                address = self.core.symbols_by_name[location]
+            except KeyError:
+                pass
+        else:
+            try: 
+                address = int(location)
+            except:
+                print('Failed')
+
+        if(eproc is not None): 
+            if(isinstance(eproc, int)):
+                dtb = self.functions.e2d.calculate(eproc)
+            else:
+                dtb = self.functions.e2d.calculate(eproc.v())
+        else:
+            dtb = self.functions.e2d.calculate(self.core.current_EPROCESS.v())
+
+        self.core.bp_index.addBpt(Breakpoint(address), dtb)
+
+'''
+class SetBp(tprobe.AbstractTProbePlugin):
+    name = 'b'
+
     def calculate(self, location=None, eproc = None):
         if(location == None):
             location = self.core.functions.gr("eip")
@@ -167,7 +198,7 @@ class SetBp(tprobe.AbstractTProbePlugin):
 
 #        gdb.execute('b *{0} if $cr3=={1}'.format(address, dtb),False, True)
 #        self.core.bpts[address] = dtb
-
+'''
 #class DelBp(tprobe.AbstractTProbePlugin):
 #    name = 'db'
 #
@@ -306,7 +337,7 @@ class Eproc2Peb(tprobe.AbstractTProbePlugin):
     name = 'e2peb'
     
     def calculate(self, eproc_addr):
-        eproc = self.functions.create_process_object(eproc_addr)
+        eproc = self.functions.offset_to_EPROCESS(eproc_addr)
         peb = eproc.Peb
         return peb
 
@@ -328,7 +359,10 @@ class Eproc2InMemoryOrderModuleList(tprobe.AbstractTProbePlugin):
     name = 'e2imoml'
 
     def calculate(self, eproc_addr):
-        eproc = self.functions.create_process_object(eproc_addr)
+        try:
+            eproc = self.functions.offset_to_EPROCESS(eproc_addr)
+        except:
+            eproc = eproc_addr
         modules = eproc.get_mem_modules()
         return modules
         
@@ -443,13 +477,46 @@ class ReloadTargetSymbols(tprobe.AbstractTProbePlugin):
     def render_text(self, sth):
         pass
 
+class ReloadModuleSymbols(tprobe.AbstractTProbePlugin):
+    name = 'reload_module_symbols'
+
+    def calculate(self, module_name):
+        module = self.core.current_modules[module_name]
+        for export in module.exports():
+            if(not export[2].is_valid()): continue
+            resolvedOffset = module.DllBase.v() + export[1]
+            self.core.current_symbols[module.BaseDllName][export[2]] = resolvedOffset
+
+        return self.core.current_symbols
+
+    def render_text(self, sth):
+        pass
+
+class ReloadCurrentModules(tprobe.AbstractTProbePlugin):
+    name = 'reload_current_modules'
+
+    def calculate(self):
+        self.core.current_modules = {}
+
+        eproc = self.core.current_EPROCESS
+
+        for module in self.core.functions.e2imoml.calculate(eproc):
+            self.core.current_modules[module.BaseDllName] = module
+            self.core.current_symbols[module.BaseDllName] = {}
+
+        return self.core.current_modules
+
+    def render_text(self, sth):
+        pass
+
 class ReloadSymbols(tprobe.AbstractTProbePlugin):
     name = 'reload_symbols'
 
     def calculate(self):
         symbols_by_name = {}
         symbols_by_offset = {}
-        for mod in self.core.functions.e2imoml.calculate(self.core.current_EPROCESS.v()):
+        module = self.core.functions.get_EPROCESS(self.core.current_EPROCESS.v())
+        for mod in self.core.functions.e2imoml.calculate(module):
             base = mod.DllBase
             name = mod.BaseDllName
             for export in mod.exports():
