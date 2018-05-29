@@ -329,10 +329,10 @@ class MemoryDwordView(MemoryView):
     def copy_to_clipboard(self, widget, data=None):
         selection = self.view.get_selection()
         (model, pathlist) = selection.get_selected_rows()
-        print(len(pathlist))
         for path in pathlist :
             tree_iter = model.get_iter(path)
             value = "%s" % (model.get_value(tree_iter,1))
+            self.gshell.log("Copying value: %s\n" % value)
             self.gshell.clipboard.set_text(value, -1)
             if(cfg.debug == True): self.gshell.log("Copied")
 
@@ -491,6 +491,14 @@ class CodeView(object):
         menu_item3.connect("activate", self.activate_run_until)
         self.menu.append(menu_item3)
         menu_item3.show()
+        menu_item8 = gtk.MenuItem("Run until return")
+        menu_item8.connect("activate", self.activate_run_until_return)
+        self.menu.append(menu_item8)
+        menu_item8.show()
+        menu_item9 = gtk.MenuItem("Run until return (ret scan)")
+        menu_item9.connect("activate", self.activate_run_until_return_scan)
+        self.menu.append(menu_item9)
+        menu_item9.show()
         menu_item4 = gtk.MenuItem("Goto")
         menu_item4.connect("activate", self.activate_goto_prompt)
         self.menu.append(menu_item4)
@@ -534,6 +542,7 @@ class CodeView(object):
         for path in pathlist :
             tree_iter = model.get_iter(path)
             value = "%s: %s" % (model.get_value(tree_iter,0), model.get_value(tree_iter,1))
+            self.gshell.log("Copying value: %s\n" % value)
             self.gshell.clipboard.set_text(value, -1)
             if(cfg.debug == True): self.gshell.log("Copied")
 
@@ -590,6 +599,16 @@ class CodeView(object):
             value = model.get_value(tree_iter,0)
         self.gshell.log("Running until: %s\n" % value)
         self.gshell.functions.until.calculate(int(value, 16))
+        self.gshell.refresh()
+
+    def activate_run_until_return(self, widget, data=None):
+        self.gshell.log("Running until return")
+        self.gshell.functions.retWait.calculate()
+        self.gshell.refresh()
+
+    def activate_run_until_return_scan(self, widget, data=None):
+        self.gshell.log("Running until return (ret scan)")
+        self.gshell.functions.retWaitScan.calculate()
         self.gshell.refresh()
 
     def activate_goto_prompt(self, widget, data=None):
@@ -909,7 +928,8 @@ class GtkConsole(tprobe.AbstractTProbePlugin):
         self.core.current_context = self.functions.get_context()
         self.core.reading_context = self.core.current_context
 
-        self.clipboard = gtk.Clipboard()
+#        self.clipboard = gtk.Clipboard()
+        self.clipboard = gtk.Clipboard.get(gdk.SELECTION_CLIPBOARD)
 
 #        self.bp_index = BptIndex()
 
@@ -939,9 +959,10 @@ class GtkConsole(tprobe.AbstractTProbePlugin):
 
     def render_text(self, shell):
         self.settings = gtk.Settings.get_default()
-        #self.settings.set_string_property("gtk-font-name", "Courier 8", "")
         self.settings.set_string_property("gtk-font-name", self.core.config.opts['font'], "")
         self.home_path = self.core.config.opts['home_path']
+
+        self.core.gshell = self
 
         mb = MemoryView(self)
         md = MemoryDwordView(self)
@@ -964,9 +985,7 @@ class GtkConsole(tprobe.AbstractTProbePlugin):
         
         self.m = Main(self)
 
-        #from pudb.remote import set_trace
-        #set_trace(term_size=(160, 60))
-
+#        Thread(target = gtk.main).start()
         gtk.main()
 
         return False

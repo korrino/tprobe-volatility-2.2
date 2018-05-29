@@ -216,19 +216,108 @@ class IterateList(tprobe.AbstractTProbeApiFunction):
             nobj = obj.Object(objname, lst.obj_offset - offset, vm)
             yield nobj
 
+class WaitForRet(tprobe.AbstractTProbePlugin):
+    name = 'retWait'
+
+    def calculate(self):
+        gdb.execute('finish')
+        return
+
+    def render_text(self):
+        return
+
+class WaitForRetScan(tprobe.AbstractTProbePlugin):
+    name = 'retWaitScan'
+
+    def calculate(self):
+        import time
+        while True:
+            opcode = gdb.execute('x/bx $eip', False, True).split('\t')[1].strip()
+            if(opcode in ['0xc2', '0xc3']):
+                break
+            if(opcode in ['0xe8', '0x9a', '0xff']):
+                self.core.functions.ni()
+            else:
+                self.core.functions.ni()
+        gdb.execute('si')
+        return
+
+    def render_text(self):
+        return
+
+class Eproc2Kthreads(tprobe.AbstractTProbePlugin):
+    name = 'eproc2kthreads'
+
+    def calculate(self, eproc):
+        print('Generating locations')
+
+        locations = []
+
+        from volatility.obj import Object
+
+        EPROCESS = Object('_EPROCESS', eproc, self.core.addrspace)
+        thread_list = EPROCESS.ThreadListHead
+
+        list_head = list_entry = thread_list
+        list_entry = list_head.Flink
+
+        while(list_entry.v() != list_head.v()):
+            kthreado = list_entry.v() - 0x1b0
+            KTHREAD = Object('_KTHREAD', kthreado, self.core.addrspace)
+            print('KTHREAD 0x%08x: Eip: 0x%08x, DbgEip: 0x%08x, Esp: 0x%08x' % (KTHREAD.v(), KTHREAD.TrapFrame.Eip, KTHREAD.TrapFrame.DbgEip, KTHREAD.TrapFrame.TempEsp))
+
+            locations.append(KTHREAD.TrapFrame.Eip)
+            list_entry = list_entry.Flink
+
+        return None
+
+    def render_text(self, data):
+            return
+
 class WaitForEproc(tprobe.AbstractTProbePlugin):
     name = 'eprocWait'
 
     def calculate(self, eproc):
+        print('Generating locations')
+
+        locations = []
+
+        from volatility.obj import Object
+
+        EPROCESS = Object('_EPROCESS', eproc, self.core.addrspace)
+        thread_list = EPROCESS.ThreadListHead
+
+        list_head = list_entry = thread_list
+        list_entry = list_head.Flink
+
+        while(list_entry.v() != list_head.v()):
+            kthreado = list_entry.v() - 0x1b0
+            KTHREAD = Object('_KTHREAD', kthreado, self.core.addrspace)
+            print('KTHREAD 0x%08xL 0x%08x' % (KTHREAD.v(), KTHREAD.TrapFrame.DbgEip))
+
+#            locations.append(KTHREAD.TrapFrame.DbgEip)
+            locations.append(KTHREAD.v())
+            list_entry = list_entry.Flink
+
+        print('Breaking')
+
         cr3 = self.functions.e2d.calculate(eproc)
-        location = "*0x%x" % XPSP3_CR3_SWITCH
-        gdb.execute('b {0} if $cr3 == {1}'.format(location, cr3),False, True)
+
+        for location in locations:
+            break_str = "*0x%x" % location
+            gdb.execute('b {0} if $cr3 == {1}'.format(break_str, cr3),False, True)
+
+        print('Continuing')
         gdb.execute('c')
 
-        for breakpoint in gdb.breakpoints():
-#            print("%s %s" % (breakpoint.location[:-1], location))
-            if(breakpoint.location.strip() == location.strip()):
-                breakpoint.delete()
+        print('Removing breakes')
+        
+        for locations in locations:
+            break_str = "*0x%x" % location
+            for breakpoint in gdb.breakpoints():
+                print("%s %s" % (breakpoint.location[:-1], location))
+                if(breakpoint.location.strip() == location.strip()):
+                    breakpoint.delete()
 
         return self.functions.gr("cr3")
 
@@ -381,17 +470,39 @@ class ImageBase2EntryPointOffset(tprobe.AbstractTProbePlugin):
     def render_text(self, epo):
         print('EP off: 0x%x' % (epo))
 
+class ReloadTargetSymbols(tprobe.AbstractTProbePlugin):
+    name = 'reload_target_symbols'
+
+    def calculate(self, eproc):
+        symbols_by_name = {}
+        symbols_by_offset = {}
+        print("Resolving symbols, patience")
+        for mod in self.core.functions.e2imoml.calculate(eproc):
+            base = mod.DllBase
+            name = mod.BaseDllName
+            for export in mod.exports():
+                if(not export[2].is_valid()): continue
+                resolvedName = "%s!%s" % (name, str(export[2]))
+                resolvedOffset = base.v() + export[1]
+                symbols_by_name[resolvedName] = resolvedOffset
+                symbols_by_offset[resolvedOffset] = resolvedName
+        self.core.symbols_by_name = symbols_by_name
+        self.core.symbols_by_offset = symbols_by_offset
+        self.core.symbols_by_name.update(self.core.kernel_symbols_by_name)
+        self.core.symbols_by_offset.update(self.core.kernel_symbols_by_offset)
+
+    def render_text(self, sth):
+        pass
+
 class ReloadSymbols(tprobe.AbstractTProbePlugin):
     name = 'reload_symbols'
 
     def calculate(self):
         symbols_by_name = {}
         symbols_by_offset = {}
-        print("Resolving symbols, patience")
         for mod in self.core.functions.e2imoml.calculate(self.core.current_context.v()):
             base = mod.DllBase
             name = mod.BaseDllName
-            print(name)
             for export in mod.exports():
                 if(not export[2].is_valid()): continue
                 resolvedName = "%s!%s" % (name, str(export[2]))
@@ -414,11 +525,9 @@ class ReloadKernelSymbols(tprobe.AbstractTProbePlugin):
     def calculate(self):
         kernel_symbols_by_name = {}
         kernel_symbols_by_offset = {}
-        print("Resolving symbols, patience")
         for mod in win32.modules.lsmod(self.core.addrspace):
             base = mod.DllBase
             name = mod.BaseDllName
-            print(name)
             for export in mod.exports():
                 if(not export[2].is_valid()): continue
                 resolvedName = "%s!%s" % (name, str(export[2]))

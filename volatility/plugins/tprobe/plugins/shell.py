@@ -79,6 +79,8 @@ class InteractiveShell(tprobe.AbstractTProbePlugin):
         if hasattr(tprobe, 'directly_to_gshell'):
             if(tprobe.directly_to_gshell):
                 namespace['gshell']()
+            else:
+                console.interact("Welcome in TProbe shell plugin.")
         else:
             console.interact("Welcome in TProbe shell plugin.")
 
