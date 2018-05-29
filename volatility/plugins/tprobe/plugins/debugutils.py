@@ -501,7 +501,7 @@ class DecodeOp1(tprobe.AbstractTProbeApiFunction):
         return self.core.functions.gr(reg)
 
     def read(self, addr, length):
-        space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
+        space = self.core.current_EPROCESS.get_process_address_space() 
         return space.read(addr, length)
 
     def decode_op1(self, op1):
@@ -548,7 +548,7 @@ class Ni(tprobe.AbstractTProbePlugin):
 
     def calculate(self):
         eip = self.core.functions.gr("eip")
-        space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
+        space = self.core.current_EPROCESS.get_process_address_space() 
         factor = 0x20
 #        while(factor > 0x0):
 #            try:
@@ -607,7 +607,7 @@ class Disassemble(tprobe.AbstractTProbePlugin):
             address = self.core.functions.gr("eip")
 
         if not space:
-            space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
+            space = self.core.current_EPROCESS.get_process_address_space() 
 
         if not sys.modules.has_key("distorm3"):
             print "ERROR: Disassembly unavailable, distorm not found"

@@ -714,7 +714,7 @@ class ProcessView(object):
             self.gshell.log("Setting reading EPROCESS to: %s\n" % value)
 #            self.gshell.functions.cc.calculate(int(value, 16))
             self.gshell.core.current_EPROCESS = self.gshell.core.functions.get_EPROCESS(int(value, 16))
-            if(cfg.debug == True): self.gshell.log("Reading EPROCESS: 0x%x\n" % self.gshell.core.current_EPROCESS.v())
+            self.gshell.log("Current EPROCESS: 0x%x\n" % self.gshell.core.current_EPROCESS.v())
         self.gshell.refresh()
 
     def refresh(self):
@@ -945,7 +945,7 @@ class GtkConsole(tprobe.AbstractTProbePlugin):
         return self
 
     def refresh(self, component=None, category=None):
-        self.core.functions.uce.calculate()
+        #self.core.functions.uce.calculate()
         if(component != None):
             component.refresh()
         if(category != None):

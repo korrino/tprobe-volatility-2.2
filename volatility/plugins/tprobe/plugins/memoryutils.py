@@ -9,7 +9,7 @@ class CanonicalHexDump(tprobe.AbstractTProbePlugin):
 
 	def calculate(self, address, length = 0x80, space = None):
 		if not space:
-			space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
+                        space = self.core.current_EPROCESS.get_process_address_space() 
 		
 		data = space.read(address, length)
 		if not data:
@@ -25,7 +25,7 @@ class PrintDwords(tprobe.AbstractTProbePlugin):
 
 	def calculate(self, address, length = 0x80, space = None):
 		if not space:
-			space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
+                        space = self.core.current_EPROCESS.get_process_address_space() 
 		
 		# round up to multiple of 4
 		if length % 4 != 0:
@@ -53,7 +53,7 @@ class PrintQwords(tprobe.AbstractTProbePlugin):
 
 	def calculate(self, address, length = 0x80, space = None):
 		if not space:
-			space = (self.core.current_EPROCESS or self.functions.get_EPROCESS()).get_process_address_space() 
+                        space = self.core.current_EPROCESS.get_process_address_space() 
 		
 		# round up 
 		if length % 8 != 0:
@@ -74,7 +74,7 @@ class DescribeObjectType(tprobe.AbstractTProbePlugin):
 	dependencies = ['get_EPROCESS']
 
 	def calculate(self, objct, address = None, address_space = None, return_object = False):
-		EPROCESS = self.core.current_EPROCESS or self.functions.get_EPROCESS()
+		EPROCESS = self.core.current_EPROCESS
 		profile = (address_space or EPROCESS.obj_vm).profile
 
 		if address is not None:
