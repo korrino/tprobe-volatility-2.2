@@ -347,8 +347,6 @@ class tprobe(commands.Command):
             plugin.check_dependencies()
 
         plugins_to_init = self.functions.dict.values()
-        print "Plugins:"
-        print plugins_to_init
         plugins_to_init.sort(cmp=(lambda x,y: 1 if x.after_validation_priority > y.after_validation_priority else -1))
         
         for plugin in plugins_to_init:

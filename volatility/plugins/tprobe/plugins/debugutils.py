@@ -274,56 +274,6 @@ class Eproc2Kthreads(tprobe.AbstractTProbePlugin):
     def render_text(self, data):
             return
 
-class WaitForEproc(tprobe.AbstractTProbePlugin):
-    name = 'eprocWait'
-
-    def calculate(self, eproc):
-        print('Generating locations')
-
-        locations = []
-
-        from volatility.obj import Object
-
-        EPROCESS = Object('_EPROCESS', eproc, self.core.addrspace)
-        thread_list = EPROCESS.ThreadListHead
-
-        list_head = list_entry = thread_list
-        list_entry = list_head.Flink
-
-        while(list_entry.v() != list_head.v()):
-            kthreado = list_entry.v() - 0x1b0
-            KTHREAD = Object('_KTHREAD', kthreado, self.core.addrspace)
-            print('KTHREAD 0x%08xL 0x%08x' % (KTHREAD.v(), KTHREAD.TrapFrame.DbgEip))
-
-#            locations.append(KTHREAD.TrapFrame.DbgEip)
-            locations.append(KTHREAD.v())
-            list_entry = list_entry.Flink
-
-        print('Breaking')
-
-        cr3 = self.functions.e2d.calculate(eproc)
-
-        for location in locations:
-            break_str = "*0x%x" % location
-            gdb.execute('b {0} if $cr3 == {1}'.format(break_str, cr3),False, True)
-
-        print('Continuing')
-        gdb.execute('c')
-
-        print('Removing breakes')
-        
-        for locations in locations:
-            break_str = "*0x%x" % location
-            for breakpoint in gdb.breakpoints():
-                print("%s %s" % (breakpoint.location[:-1], location))
-                if(breakpoint.location.strip() == location.strip()):
-                    breakpoint.delete()
-
-        return self.functions.gr("cr3")
-
-    def render_text(self, cr3):
-        print("Thread arrived, current DTB: 0x%x" % cr3)
-
 class ProcessName2Eproc(tprobe.AbstractTProbePlugin):
     name = 'pn2e'
 
