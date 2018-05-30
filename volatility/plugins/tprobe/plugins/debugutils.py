@@ -140,6 +140,28 @@ class LoadBpList(tprobe.AbstractTProbePlugin):
             self.core.functions.b.calculate(bp[:-1], eproc)
         f.close()
 
+class SetSystemWideBp(tprobe.AbstractTProbePlugin):
+    name = 'swb'
+
+    def calculate(self, location = None):
+        if(location == None):
+            location = self.core.functions.gr("eip")
+
+        if(isinstance(location, int)):
+            address = location
+        elif(isinstance(location, str)):
+            try:
+                address = self.core.symbols_by_name[location]
+            except KeyError:
+                pass
+        else:
+            try: 
+                address = int(location)
+            except:
+                print('Failed')
+
+        self.core.bp_index.addBpt(Breakpoint(address), None)
+
 class SetBp(tprobe.AbstractTProbePlugin):
     name = 'b'
 
@@ -482,10 +504,12 @@ class ReloadModuleSymbols(tprobe.AbstractTProbePlugin):
 
     def calculate(self, module_name):
         module = self.core.current_modules[module_name]
+        self.core.current_symbols[module_name] = {}
+
         for export in module.exports():
             if(not export[2].is_valid()): continue
             resolvedOffset = module.DllBase.v() + export[1]
-            self.core.current_symbols[module.BaseDllName][export[2]] = resolvedOffset
+            self.core.current_symbols[module_name][export[2]] = resolvedOffset
 
         return self.core.current_symbols
 
