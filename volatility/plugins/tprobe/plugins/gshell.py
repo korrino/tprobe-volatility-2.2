@@ -689,7 +689,7 @@ class ProcessView(object):
         menu_item2.show()
 
         self.symbols_menu = gtk.Menu()
-        menu_item3 = gtk.MenuItem("Goto symbol")
+        menu_item3 = gtk.MenuItem("Modules & symbols")
         menu_item3.set_submenu(self.symbols_menu)
 
         reload_item = gtk.MenuItem("<Reload modules>")
@@ -700,10 +700,61 @@ class ProcessView(object):
         self.menu.append(menu_item3)
         menu_item3.show()
 
+        ep_menu = gtk.Menu()
+        menu_item4 = gtk.MenuItem("Entry point")
+        menu_item4.set_submenu(ep_menu)
+
+        ep_goto_item = gtk.MenuItem("Goto in Code View")
+        ep_goto_item.connect("activate", self.ep_goto, None)
+        ep_menu.append(ep_goto_item)
+        ep_goto_item.show()
+
+        ep_bp_item = gtk.MenuItem("Insert breakpoint")
+        ep_bp_item.connect("activate", self.ep_bp, None)
+        ep_menu.append(ep_bp_item)
+        ep_bp_item.show()
+
+        self.menu.append(menu_item4)
+        menu_item4.show()
+
         self.view.connect_object("button_press_event", self.button_pressed, self.menu)
         self.window.add(self.view)
         self.window.show_all()
 
+
+    def ep_goto(self, widget, data):
+        selection = self.view.get_selection()
+        (model, pathlist) = selection.get_selected_rows()
+        for path in pathlist :
+            tree_iter = model.get_iter(path)
+            value = model.get_value(tree_iter,1)
+            process = self.gshell.core.functions.get_EPROCESS(int(value, 16))
+            self.gshell.core.current_EPROCESS = process
+
+            image_base = self.gshell.core.functions.e2ib.calculate(process.v())
+            ep = self.gshell.core.functions.ib2epo.calculate(image_base)
+
+            process_name = self.gshell.functions.get_process_name(process)
+            self.gshell.log("Going to: %s:0x%08x" % (process_name, ep))
+            code_view = self.gshell.cs[0]
+            code_view.offset = ep
+            code_view.refresh_no_reset()
+
+    def ep_bp(self, widget, data):
+        selection = self.view.get_selection()
+        (model, pathlist) = selection.get_selected_rows()
+        for path in pathlist :
+            tree_iter = model.get_iter(path)
+            value = model.get_value(tree_iter,1)
+            process = self.gshell.core.functions.get_EPROCESS(int(value, 16))
+            self.gshell.core.current_EPROCESS = process
+
+            image_base = self.gshell.core.functions.e2ib.calculate(process.v())
+            ep = self.gshell.core.functions.ib2epo.calculate(image_base)
+
+            process_name = self.gshell.functions.get_process_name(process)
+            self.gshell.log("Inserted breakpoint at %s:0x%08x" % (process_name, ep))
+            self.gshell.core.functions.b.calculate(location = ep, eproc = process)
 
     def symbol_system_wide_breakpoint(self, widget, data):
         self.gshell.log("Inserted breakpoint at: all:0x%08x" % data)
@@ -795,12 +846,9 @@ class ProcessView(object):
     def activate_set_EPROCESS(self, widget, data):
         selection = self.view.get_selection()
         (model, pathlist) = selection.get_selected_rows()
-        print(len(pathlist))
         for path in pathlist :
             tree_iter = model.get_iter(path)
             value = model.get_value(tree_iter,1)
-            self.gshell.log("Setting reading EPROCESS to: %s\n" % value)
-#            self.gshell.functions.cc.calculate(int(value, 16))
             self.gshell.core.current_EPROCESS = self.gshell.core.functions.get_EPROCESS(int(value, 16))
             self.gshell.log("Current EPROCESS: 0x%x\n" % self.gshell.core.current_EPROCESS.v())
         self.gshell.refresh()
