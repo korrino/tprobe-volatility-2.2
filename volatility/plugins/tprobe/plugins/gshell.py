@@ -683,6 +683,7 @@ class ProcessView(object):
         self.view.append_column(instr_col)
 
         self.menu = gtk.Menu()
+
         menu_item2 = gtk.MenuItem("Set EPROCESS perspective")
         menu_item2.connect("activate", self.activate_set_EPROCESS, "test")
         self.menu.append(menu_item2)
@@ -717,10 +718,54 @@ class ProcessView(object):
         self.menu.append(menu_item4)
         menu_item4.show()
 
+        menu_item5 = gtk.MenuItem("Apply symbols from process")
+        menu_item5.connect("activate", self.reload_process_symbols, None)
+        self.menu.append(menu_item5)
+        menu_item5.show()
+
+        menu_item6 = gtk.MenuItem("Apply symbols from kernel")
+        menu_item6.connect("activate", self.reload_kernel_symbols, None)
+        self.menu.append(menu_item6)
+        menu_item6.show()
+
         self.view.connect_object("button_press_event", self.button_pressed, self.menu)
         self.window.add(self.view)
         self.window.show_all()
 
+
+    def reload_kernel_symbols(self, widget, data):
+        selection = self.view.get_selection()
+        (model, pathlist) = selection.get_selected_rows()
+        for path in pathlist :
+            tree_iter = model.get_iter(path)
+            value = model.get_value(tree_iter,1)
+            process = self.gshell.core.functions.get_EPROCESS(int(value, 16))
+            self.gshell.core.current_EPROCESS = process
+
+            process_name = self.gshell.functions.get_process_name(process)
+            self.gshell.core.functions.reload_kernel_symbols()
+            self.gshell.log("Applied symbols from kernel")
+
+            # refresh code
+            for c in self.gshell.cs:
+                c.refresh_no_reset()
+
+    def reload_process_symbols(self, widget, data):
+        selection = self.view.get_selection()
+        (model, pathlist) = selection.get_selected_rows()
+        for path in pathlist :
+            tree_iter = model.get_iter(path)
+            value = model.get_value(tree_iter,1)
+            process = self.gshell.core.functions.get_EPROCESS(int(value, 16))
+            self.gshell.core.current_EPROCESS = process
+
+            process_name = self.gshell.functions.get_process_name(process)
+            self.gshell.core.functions.reload_target_symbols(process.v())
+            self.gshell.log("Applied symbols from: %s" % process_name)
+
+            # refresh code
+            for c in self.gshell.cs:
+                c.refresh_no_reset()
 
     def ep_goto(self, widget, data):
         selection = self.view.get_selection()
@@ -893,10 +938,11 @@ class AboutView(object):
         about.set_name("TProbe")
         about.set_version("1.0")
         about.set_comments("""
-Transcendent debugger for qemu machine
+Transcendent debugger for Qemu machines
 Using Qemu v1.3.91
 Using GDB v7.12.1
 Using Volatility v2.2
+Using Distorm64 v3.3
         """)
         about.set_website("http://www.korrino.com")
         about.set_website_label("http://www.korrino.com")
