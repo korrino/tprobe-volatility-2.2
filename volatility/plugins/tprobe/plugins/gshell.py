@@ -961,21 +961,21 @@ class PatronsView(object):
     def __init__(self, gshell):
         self.gshell = gshell
 
-        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="Korrino Patrons")
+        self.window = gtk.Window(gtk.WindowType.TOPLEVEL, title="Korrino Contributors")
         from gi.repository import GdkPixbuf
         logo = GdkPixbuf.Pixbuf.new_from_file_at_size("%s/korrino.png" % self.gshell.home_path, 200, 200)
 
         patrons = gtk.AboutDialog()
-        patrons.set_title("Korrino Patrons")
-        patrons.set_program_name("Patrons")
+        patrons.set_title("Korrino Contributors")
+        patrons.set_program_name("Contributors")
         patrons.set_comments("""
-Patrons keep us alive!
+Contributors keep us alive!
 
-We have no Patrons yet. Be the first one!
+We have no Contributors yet. Be the first one!
 
 """)
-        patrons.set_website("http://www.patreon.com/korrino")
-        patrons.set_website_label("http://www.patreon.com/korrino")
+        patrons.set_website("http://www.korrino.com/tprobe#donate")
+        patrons.set_website_label("http://www.korrino.com/tprobe#donate")
         patrons.set_logo(logo)
         patrons.connect("response", self.destroy)
 
@@ -1020,8 +1020,8 @@ class Main(object):
         self.aButton = gtk.Button("About TProbe")
         self.aButton.connect("clicked", self.toggle, (self.gshell.as_, AboutView))
 
-        # Patrons view
-        self.ptButton = gtk.Button("Patrons")
+        # Contributors view
+        self.ptButton = gtk.Button("Contributors")
         self.ptButton.connect("clicked", self.toggle, (self.gshell.pts, PatronsView))
 
         self.quitButton = gtk.Button("Exit GShell")
