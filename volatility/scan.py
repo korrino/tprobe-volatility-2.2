@@ -147,6 +147,7 @@ class BaseScanner(object):
                 current_offset += min(constants.SCAN_BLOCKSIZE, l)
                 
     def gdb_scan(self, address_space, offset = 0, maxlen = None):
+        debug.debug("In gdb_scan")
         self.buffer.profile = address_space.profile
         current_offset = offset
 
@@ -164,7 +165,9 @@ class BaseScanner(object):
         # Scanning paging sctructures for available addresses
         av_ad = sorted(address_space.get_available_addresses())
 
-        for (range_start, range_size) in av_ad:
+        for ad_range in av_ad:
+            range_start, range_size = ad_range
+            debug.debug("Range: 0x%08x - 0x%08x" % (range_start, range_start+range_size))
             # Jump to the next available point to scan from
             # self.base_offset jumps up to be at least range_start
             current_offset = max(range_start, current_offset)
@@ -173,21 +176,32 @@ class BaseScanner(object):
             if maxlen:
                 range_end = min(range_end, offset + maxlen)
 
+            block_start = range_start
+
             while (current_offset < range_end):
                 # We've now got range_start <= self.base_offset < range_end
+                current_offset = block_start
 
                 # Figure out how much data to read
-                l = min(constants.SCAN_BLOCKSIZE + self.overlap, range_end - current_offset)
+                block_end = block_start + min(constants.SCAN_BLOCKSIZE + self.overlap, range_end - current_offset)
 
                 # tprobe version, scanning moved to qemu
 
                 # we want only one check, is it always self.constraints[0]?
                 leadingCheck = self.constraints[0]
-                addr = address_space.find(current_offset, l, leadingCheck.tag)
-                if(addr != None):
-                    yield addr
+                debug.debug("Searching: 0x%08x - 0x%08x" % (current_offset, block_end))
 
-                current_offset += min(constants.SCAN_BLOCKSIZE, l)
+                addr = address_space.find(current_offset, block_end - current_offset, leadingCheck.tag)
+
+                while((addr != None) and (addr > current_offset)):
+                    yield addr
+                    debug.debug("Addr: %s" % addr)
+                    current_offset = addr +1
+                    debug.debug("Searching: 0x%08x - 0x%08x" % (current_offset, block_end))
+                    addr = address_space.find(current_offset, block_end - current_offset, leadingCheck.tag)
+    
+                block_start += min(constants.SCAN_BLOCKSIZE, range_end - current_offset)
+                if(block_start >= range_end): break
         
 
 class DiscontigScanner(BaseScanner):

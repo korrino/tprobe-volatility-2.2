@@ -30,9 +30,6 @@ import itertools
 def load_as(config, astype = 'virtual', **kwargs):
     """Loads an address space by stacking valid ASes on top of each other (priority order first)"""
 
-    if config.CACHED_AS is not None:
-        return config.CACHED_AS
-
     base_as = None
     error = exceptions.AddrSpaceError()
 

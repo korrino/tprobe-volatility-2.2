@@ -582,6 +582,22 @@ class ReloadKernelSymbols(tprobe.AbstractTProbePlugin):
     def render_text(self, sth):
         pass
 
+class ResolveSymbol(tprobe.AbstractTProbePlugin):
+    name = 'rsymbol'
+
+    def calculate(self, name):
+        found = 0
+        for symbol_name in self.core.symbols_by_name.keys():
+            if name in symbol_name:
+                print('0x%08x: %s' % (self.core.symbols_by_name[symbol_name], symbol_name))
+                found = 1
+
+        if not found:
+            print('Not found. Try reloading symbols.')
+
+    def render_text(self, sth):
+        pass
+
 class DecodeOp1(tprobe.AbstractTProbeApiFunction):
     name = 'dec_op1'
 

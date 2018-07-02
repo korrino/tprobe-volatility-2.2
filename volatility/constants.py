@@ -24,7 +24,8 @@ import os, sys
 
 VERSION = "2.2"
 
-SCAN_BLOCKSIZE = 1024 * 1024 * 10
+#SCAN_BLOCKSIZE = 1024 * 1024 * 10
+SCAN_BLOCKSIZE = 0x10000
 
 PLUGINPATH = os.path.dirname(__file__)
 # If we're in a pyinstaller executable 
